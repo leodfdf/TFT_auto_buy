@@ -54,7 +54,7 @@ def load_json_data():
         return json.load(f)
 
 # 获取所有窗口
-def list_windows():
+def list_windows(keyword="League Of Legends"):
     def enum_windows(hwnd, results):
         if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
             results.append((win32gui.GetWindowText(hwnd), hwnd))
@@ -62,6 +62,12 @@ def list_windows():
     window_list = []
     win32gui.EnumWindows(enum_windows, window_list)
     return window_list
+
+def update_window_list(label):
+    windows = list_windows()
+    display_text = "\n".join([f"Title: {title}, HWND: {hwnd}" for title, hwnd in windows])
+    label.config(text=display_text)
+    label.after(5000, update_window_list, label)  # 每5秒刷新一次
 
 # 获取窗口位置
 def get_window_rect(hwnd):
@@ -117,7 +123,7 @@ def ocr_hero_buy():
                             moveTo(x, y)  # 移动到目标位置
                             time.sleep(0.01)  # 等待0.01秒
                             mouseDown()  # 按下鼠标左键
-                            time.sleep(0.05)  # 按下后等待0.05秒
+                            time.sleep(0.01)  # 按下后等待0.05秒
                             mouseUp()  # 释放鼠标左键
 
                             # 记录点击次数
@@ -127,8 +133,8 @@ def ocr_hero_buy():
                             click_count[position_key] += 1
 
                             # 检查点击次数是否超过3次
-                            if click_count[position_key] > 2:
-                                print(f"位置 {position_key} 點擊超過3次，自動暫停。")
+                            if click_count[position_key] > 5:
+                                print(f"位置 {position_key} 點擊超過5次，自動暫停。")
                                 toggle_pause()  # 调用暂停函数
                                 # 在暂停后重置点击计数
                                 click_count[position_key] = 0  # 重置点击次数
@@ -177,7 +183,7 @@ def start_detection():
     paused = False
     detection_thread = threading.Thread(target=ocr_hero_buy)
     detection_thread.start()
-    print("凱使持續檢測螢幕中的目標")
+    print("開始持續檢測螢幕中的目標")
 
 # 停止检测
 def stop_detection_func():
