@@ -11,11 +11,11 @@ from PIL import Image, ImageTk
 from pyautogui import screenshot, moveTo, mouseDown, mouseUp
 import keyboard
 
-# 获取当前脚本目录
+# 獲取目前腳本路徑
 def get_current_directory():
     return os.path.dirname(os.path.abspath(__file__))
 
-# 保存当前选择的英雄到配置文件
+# 保存當前選擇的英雄到配置文件
 def save_selected_heroes(selected_heroes):
     config_path = os.path.join(get_current_directory(), 'selected_heroes.json')
     with open(config_path, 'w', encoding='utf-8') as f:
@@ -32,7 +32,7 @@ def load_selected_heroes():
 # 初始化 PaddleOCR
 ocr = PaddleOCR(use_angle_cls=False, lang="chinese_cht", use_gpu=True, show_log=False)
 
-# 定义全局变量
+# 定義全局變數
 stop_detection = False
 paused = False
 window_choice = None
@@ -43,17 +43,17 @@ detection_thread = None
 hwnd = None
 current_heroes_label = None
 
-# 点击次数记录
+# 點擊計數
 click_count = {}
 shuffling_thread = None
 
-# 获取 JSON 数据
+# 獲取 JSON 數據
 def load_json_data():
     config_path = os.path.join(get_current_directory(), 'hero.json')
     with open(config_path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-# 获取所有窗口
+# 獲取所有視窗
 def list_windows(keyword="League Of Legends"):
     def enum_windows(hwnd, results):
         if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
@@ -69,38 +69,38 @@ def update_window_list(label):
     label.config(text=display_text)
     label.after(5000, update_window_list, label)  # 每5秒刷新一次
 
-# 获取窗口位置
+# 獲取視窗hwnd
 def get_window_rect(hwnd):
     if hwnd:
         return win32gui.GetWindowRect(hwnd)
     return None
 
-# 持续检测并抓取英雄函数
+# 持續檢測並獲取英雄函數
 def ocr_hero_buy():
     global stop_detection, paused, selected_heroes
 
     while not stop_detection:
         if paused:
-            time.sleep(0.1)  # 暂停状态下稍微休眠
+            time.sleep(0.1)  # 暫停狀態下暫時休眠
             continue
 
         rect = get_window_rect(hwnd)
         if not rect:
-            print("未找到指定的游戏窗口")
+            print("未找到指定遊戲視窗")
             break
 
         StartLeft, StartTop, right, bottom = rect
         width = right - StartLeft
         height = bottom - StartTop
 
-        # 截图并裁剪区域
+        # OCR截圖並裁剪
         image = screenshot(region=(StartLeft, StartTop, width, height))
         left_crop = image.width * 0.2
         right_crop = image.width * 0.1
         bottom_crop = image.height * 0.95
         cropped_image = image.crop((int(left_crop), int(bottom_crop), image.width - int(right_crop), image.height))
 
-        # OCR 识别
+        # OCR 辨認
         image_np = np.array(cropped_image)
         result = ocr.ocr(image_np, cls=False)
 
@@ -119,41 +119,41 @@ def ocr_hero_buy():
                             print(f"檢測到目標: '{recognized_text}', 準備拿牌...")
                             print(f"點擊座標: ({x}, {y})")
 
-                            # 使用 pyautogui 进行点击操作
-                            moveTo(x, y)  # 移动到目标位置
+                            # 使用 pyautogui 進行點擊
+                            moveTo(x, y)  # 移動到目標位置
                             time.sleep(0.01)  # 等待0.01秒
                             mouseDown()  # 按下鼠标左键
-                            time.sleep(0.01)  # 按下后等待0.05秒
-                            mouseUp()  # 释放鼠标左键
+                            time.sleep(0.01)  # 按下後等待0.01~0.05秒按照自己需求改
+                            mouseUp()  # 鼠標左鍵彈起
 
-                            # 记录点击次数
+                            # 記錄點擊次數
                             position_key = (x, y)  # 创建一个坐标元组作为字典的key
                             if position_key not in click_count:
                                 click_count[position_key] = 0
                             click_count[position_key] += 1
 
-                            # 检查点击次数是否超过3次
+                            # 確認是否點擊超過5次
                             if click_count[position_key] > 5:
                                 print(f"位置 {position_key} 點擊超過5次，自動暫停。")
-                                toggle_pause()  # 调用暂停函数
-                                # 在暂停后重置点击计数
-                                click_count[position_key] = 0  # 重置点击次数
+                                toggle_pause()  # 調用暂停變數
+                                # 在暂停後重製點擊計數
+                                click_count[position_key] = 0  # 重置點擊計數
 
-        # 只有在未暂停状态下输出当前未检测到英雄的信息
+        # 只有在未暫停輸出當前未識別到英雄的信息
         if recognized_texts:
             print(f"檢測到: {' '.join(recognized_texts)}")
-        elif not paused:  # 只有在未暂停时才输出未检测到英雄的信息
+        elif not paused:  # 只有在為暫停情況下輸出未識別到英雄的信息
             print("目前沒有檢測到英雄")
 
         time.sleep(0.33)
 
-# 更新当前抓取的英雄列表
+# 更新並寫入選取的英雄列表
 def update_current_heroes():
     current_heroes = [hero for hero, var in checkbox_vars.items() if var.get()]
     if current_heroes_label:  # 确保 current_heroes_label 被定义
         current_heroes_label.config(text="目前選取的英雄: " + ', '.join(current_heroes))
 
-# 更新窗口选择下拉框
+# 更新下拉視窗
 def update_window_choice():
     global hwnd
     windows = list_windows()
@@ -162,18 +162,18 @@ def update_window_choice():
     if hwnd is not None:
         current_window_name = win32gui.GetWindowText(hwnd)
         if current_window_name in window_names:
-            window_choice.set(current_window_name)  # 选中当前窗口
+            window_choice.set(current_window_name)  # 選取當前視窗
         else:
-            window_choice.set("")  # 清空选择
+            window_choice.set("")  # 清空選項
 
-# 选择窗口时更新窗口信息
+# 選擇窗口時更新視窗信息
 def on_window_selected(event):
     global hwnd
     selected_window_name = window_choice.get()
     if selected_window_name:
         hwnd = next((hwnd for name, hwnd in list_windows() if name == selected_window_name), None)
 
-# 持续检测的启动函数
+# 持續檢測的啟動變數
 def start_detection():
     global stop_detection, paused, detection_thread
     if hwnd is None:
@@ -185,7 +185,7 @@ def start_detection():
     detection_thread.start()
     print("開始持續檢測螢幕中的目標")
 
-# 停止检测
+# 停止檢測
 def stop_detection_func():
     global stop_detection, detection_thread
     stop_detection = True
@@ -193,22 +193,22 @@ def stop_detection_func():
         detection_thread.join()
     print("檢測已停止")
 
-# 暂停和恢复检测
+# 暂停和恢復檢測
 def toggle_pause():
     global paused
     paused = not paused
     if paused:
-        print("檢測已暂停。按 HOME 键继续檢測，或者再次按 END 键解除暂停。")
+        print("檢測已暂停。按 HOME 鍵繼續檢測，或者再次按 END 鍵解除暫停。")
     else:
         print("再次開始檢測...")
 
-# 取消所有勾选的英雄
+# 取消所有選取的英雄
 def uncheck_all():
     for var in checkbox_vars.values():
         var.set(False)
     update_current_heroes()
 
-# F1 键梭哈功能
+# F1 鍵all_in功能
 def shuffling():
     global stop_detection, paused, shuffling_thread
     stop_detection = False
@@ -229,14 +229,14 @@ def shuffling():
         width = right - StartLeft
         height = bottom - StartTop
 
-        # 截图并裁剪区域
+        # 截圖並裁剪所需要的資訊
         image = screenshot(region=(StartLeft, StartTop, width, height))
         left_crop = image.width * 0.2
         right_crop = image.width * 0.1
         bottom_crop = image.height * 0.95
         cropped_image = image.crop((int(left_crop), int(bottom_crop), image.width - int(right_crop), image.height))
 
-        # OCR 识别
+        # OCR 辨認
         image_np = np.array(cropped_image)
         result = ocr.ocr(image_np, cls=False)
 
@@ -253,43 +253,43 @@ def shuffling():
                         print(f"檢測到目標: '{recognized_text}', 準備抓牌...")
                         print(f"點擊座標: ({x}, {y})")
 
-                        # 使用 pyautogui 进行点击操作
-                        moveTo(x, y)  # 移动到目标位置
+                        # 使用 pyautogui 進行點擊操作
+                        moveTo(x, y)  # 移動到目標位置
                         time.sleep(0.01)  # 等待0.01秒
-                        mouseDown()  # 按下鼠标左键
-                        time.sleep(0.05)  # 按下后等待0.05秒
-                        mouseUp()  # 释放鼠标左键
-                        break  # 找到目标英雄后跳出循环
+                        mouseDown()  # 按下滑鼠左鍵
+                        time.sleep(0.05)  # 按下後等待0.05秒
+                        mouseUp()  # 滑鼠左键彈起
+                        break  # 找到目標英雄後跳出循環
 
         if not found_hero:
             print("未檢測到目標，按下 D 键刷新卡牌...")
 
         time.sleep(0.2)  # 每 0.2 秒进行一次识别
 
-# 停止梭哈功能
+# 停止all_in功能
 def stop_shuffling():
     global stop_detection
     stop_detection = True
     print("停止ALL_IN模式")
 
-# 绑定键盘热键
-keyboard.add_hotkey('home', start_detection)  # 开始持续检测
-keyboard.add_hotkey('end', toggle_pause)  # 按下 End 键暂停/恢复
-keyboard.add_hotkey('f1', lambda: threading.Thread(target=shuffling).start())  # F1 键触发梭哈功能
-keyboard.add_hotkey('ctrl+u', uncheck_all)  # Ctrl+U 取消所有勾选
-keyboard.add_hotkey('f12', stop_detection_func)  # 停止检测并关闭程序
+# 綁定鍵盤熱鍵
+keyboard.add_hotkey('home', start_detection)  # 開始持續檢測
+keyboard.add_hotkey('end', toggle_pause)  # 按下 End 鍵暫停/恢復
+keyboard.add_hotkey('f1', lambda: threading.Thread(target=shuffling).start())  # F1 鍵開啟ALL_IN
+keyboard.add_hotkey('ctrl+u', uncheck_all)  # Ctrl+U 取消所有勾選
+keyboard.add_hotkey('f12', stop_detection_func)  # 停止檢測並關閉程序
 
-# 创建 UI 界面
+# 創建 UI 視窗
 def create_ui():
     global root, window_choice, checkbox_vars, selected_heroes, hwnd, current_heroes_label
     root = tk.Tk()
     root.title("請選擇遊戲視窗")
 
-    # 加载 JSON 数据和图片路径
+    # 加載 JSON 數據和圖片路徑
     data = load_json_data()
     hero_image_path = os.path.join(get_current_directory(), 'hero')
 
-    # 创建 Notebook（分页容器）
+    # 創建 Notebook（分頁容器）
     notebook = ttk.Notebook(root)
     notebook.pack(fill='both', expand=True)
 
@@ -302,7 +302,7 @@ def create_ui():
         for hero in heroes:
             hero_frame = tk.Frame(frame)
 
-            # 加载英雄图片
+            # 加载英雄圖片
             image_path = os.path.join(hero_image_path, f"{hero}.jpg")
             if os.path.exists(image_path):
                 image = Image.open(image_path).resize((50, 50), Image.LANCZOS)
@@ -311,12 +311,12 @@ def create_ui():
             else:
                 photo = None
 
-            # 创建复选框
+            # 創建複選框
             var = tk.BooleanVar()
             checkbox = tk.Checkbutton(hero_frame, text=hero, variable=var, font=("Segoe UI", 12))
             checkbox.pack()
 
-            # 图片标签和点击事件
+            # 圖片標籤和圖片識別
             if photo:
                 label = tk.Label(hero_frame, image=photo)
                 label.image = photo  # 保存引用
@@ -326,7 +326,7 @@ def create_ui():
             hero_frame.grid(row=row_count, column=column_count, padx=5, pady=5)
             checkbox_vars[hero] = var
 
-            # 绑定复选框变化事件
+            # 綁定複選框
             var.trace_add("write", lambda *args, hero=hero: update_current_heroes())
 
             column_count += 1
@@ -334,16 +334,16 @@ def create_ui():
                 column_count = 0
                 row_count += 1
 
-    # 添加提示标签
+    # 彈出提示視窗
     label = tk.Label(root, text="請選擇遊戲視窗:", font=("Segoe UI", 12))
     label.pack(pady=5)
 
-    # 选择窗口
+    # 選擇視窗
     window_choice = ttk.Combobox(root, state='readonly')
     window_choice.pack(pady=10)
     window_choice.bind("<<ComboboxSelected>>", on_window_selected)
 
-    # 功能按键介绍
+    # 下方出現按鍵提示
     key_info_label = tk.Label(root, text="功能按键: [HOME] 開始抓牌 | [END] 暂停/再開 | [F1] ALL_IN | [CTRL+U] 全部取消 | [F12] 退出", font=("Segoe UI", 10), wraplength=600)
     key_info_label.pack(pady=5)
 
@@ -377,7 +377,7 @@ def create_ui():
     button = tk.Button(root, text="開始抓牌[HOME]", command=start_button_click)
     button.pack()
 
-    # 窗口关闭事件处理
+    # F12關閉程序處理
     def on_closing():
         stop_detection_func()
         root.destroy()
