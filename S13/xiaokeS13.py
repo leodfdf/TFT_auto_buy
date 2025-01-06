@@ -50,24 +50,34 @@ shuffling_thread = None
 # 獲取 JSON 數據
 def load_json_data():
     config_path = os.path.join(get_current_directory(), 'hero.json')
-    with open(config_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                print("JSONDecodeError: 文件內容無效")
+                return {}
+    else:
+        print("文件不存在")
+        return {}
 
 # 獲取所有視窗
 def list_windows(keyword="League Of Legends"):
     def enum_windows(hwnd, results):
         if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
-            results.append((win32gui.GetWindowText(hwnd), hwnd))
+            window_text = win32gui.GetWindowText(hwnd)
+            if keyword.lower() in window_text.lower():
+                results.append((window_text, hwnd))
 
     window_list = []
     win32gui.EnumWindows(enum_windows, window_list)
     return window_list
 
-def update_window_list(label):
-    windows = list_windows()
+def update_window_list(label, keyword="League Of Legends"):
+    windows = list_windows(keyword)
     display_text = "\n".join([f"Title: {title}, HWND: {hwnd}" for title, hwnd in windows])
     label.config(text=display_text)
-    label.after(5000, update_window_list, label)  # 每5秒刷新一次
+    label.after(5000, update_window_list, label, keyword)  # 每5秒刷新一次
 
 # 獲取視窗hwnd
 def get_window_rect(hwnd):
@@ -315,53 +325,36 @@ def create_ui():
             var = tk.BooleanVar()
             checkbox = tk.Checkbutton(hero_frame, text=hero, variable=var, font=("Segoe UI", 12))
             checkbox.pack()
-
-            # 圖片標籤和圖片識別
-            if photo:
-                label = tk.Label(hero_frame, image=photo)
-                label.image = photo  # 保存引用
-                label.pack()
-                label.bind("<Button-1>", lambda e, v=var: v.set(1 - v.get()))
-
-            hero_frame.grid(row=row_count, column=column_count, padx=5, pady=5)
             checkbox_vars[hero] = var
 
-            # 綁定複選框
-            var.trace_add("write", lambda *args, hero=hero: update_current_heroes())
+            if photo:
+                label = tk.Label(hero_frame, image=photo)
+                label.pack()
 
+            hero_frame.grid(row=row_count, column=column_count, padx=5, pady=5)
             column_count += 1
-            if column_count >= 4:
+            if column_count >= 5:
                 column_count = 0
                 row_count += 1
 
-    # 彈出提示視窗
-    label = tk.Label(root, text="請選擇遊戲視窗:", font=("Segoe UI", 12))
-    label.pack(pady=5)
+    # 創建顯示視窗列表的標籤
+    window_list_label = tk.Label(root, text="", font=("Segoe UI", 12))
+    window_list_label.pack()
 
-    # 選擇視窗
-    window_choice = ttk.Combobox(root, state='readonly')
-    window_choice.pack(pady=10)
-    window_choice.bind("<<ComboboxSelected>>", on_window_selected)
+    # 創建下拉選單
+    window_choice = tk.StringVar()
+    window_dropdown = ttk.Combobox(root, textvariable=window_choice, font=("Segoe UI", 12))
+    window_dropdown.pack()
 
-    # 下方出現按鍵提示
-    key_info_label = tk.Label(root, text="功能按键: [HOME] 開始抓牌 | [END] 暂停/再開 | [F1] ALL_IN | [CTRL+U] 全部取消 | [F12] 退出", font=("Segoe UI", 10), wraplength=600)
-    key_info_label.pack(pady=5)
+    # 更新下拉選單的選項
+    def update_window_dropdown():
+        windows = list_windows()
+        window_dropdown['values'] = [title for title, hwnd in windows]
+        window_dropdown.after(5000, update_window_dropdown)  # 每5秒刷新一次
 
-    # 加载窗口列表
-    update_window_choice()
+    update_window_dropdown()
 
-    # 加载上次保存的英雄配置
-    selected_heroes = load_selected_heroes()
-    for hero, var in checkbox_vars.items():
-        if hero in selected_heroes:
-            var.set(True)
-
-    # 现在定义 current_heroes_label
-    global current_heroes_label
-    current_heroes_label = tk.Label(root, text="當前選取的英雄: " + ', '.join(selected_heroes), font=("Segoe UI", 12), wraplength=400)
-    current_heroes_label.pack(pady=10)
-
-    # 开始按钮
+    # 開始按鈕
     def start_button_click():
         global hwnd
         hwnd = next((hwnd for name, hwnd in list_windows() if name == window_choice.get()), None)
@@ -383,6 +376,9 @@ def create_ui():
         root.destroy()
         print("程序已關閉")
         os._exit(0)
+
+    # 監聽 F12 鍵
+    keyboard.add_hotkey('F12', on_closing)
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
